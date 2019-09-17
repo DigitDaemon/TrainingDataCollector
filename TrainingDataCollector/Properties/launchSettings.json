@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "TrainingDataCollector": {
+      "commandName": "Project",
+      "commandLineArgs": "rigusstorm kittencatnoodle"
+    }
+  }
+}
