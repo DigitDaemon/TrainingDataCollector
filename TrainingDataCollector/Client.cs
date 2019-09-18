@@ -11,7 +11,9 @@ namespace TrainingDataCollector
     
     public class Client
     {
-       // private TcpClient client;
+        private const int ALLOWABLE_FAILURES = 10;
+        private const int RESET_CYCLES = 600;
+        // private TcpClient client;
         //private StreamWriter writer;
         //private StreamReader reader;
         private String username = "DigitDaemon";
@@ -26,7 +28,7 @@ namespace TrainingDataCollector
 
         }
 
-        public void ClientThread(String channel, int time, ref bool threadEnd)
+        public void ClientThread(String channel, int time, ref bool threadEnd, ref System.Timers.Timer trigger)
         {
 
             Console.WriteLine("thread start");
@@ -34,31 +36,47 @@ namespace TrainingDataCollector
             StreamWriter writer = null;
             StreamReader reader = null;
             StreamWriter fileWriter = null;
+            int cycles = 0;
+        
             Connect(channel, ref client, ref writer, ref reader, ref fileWriter);
 
-            System.Timers.Timer trigger = new System.Timers.Timer(1000);
-            trigger.Elapsed += (sender, e) => onTick(sender, e, channel, ref client, ref writer, ref reader, ref fileWriter);
-            trigger.AutoReset = true;
-            trigger.Enabled = true;
 
+            trigger.Elapsed += (sender, e) => onTick(sender, e, channel, ref client, ref writer, ref reader, ref fileWriter, ref cycles);
+            
             while(!threadEnd)
             {
                 
             }
+
+            closeThreadResources(ref client, ref writer, ref reader, ref fileWriter);
             
-            fileWriter.Close();
-            trigger.Dispose();
        }
 
-
-        private void killThread(Object source, ElapsedEventArgs e, ref bool status)
+        private void closeThreadResources(ref TcpClient client, ref StreamWriter writer, ref StreamReader reader, ref StreamWriter fileWriter)
         {
-            status = false;
+            client.Close();
+            writer.Close();
+            reader.Close();
+            fileWriter.Close();
         }
 
-        private void onTick(Object source, ElapsedEventArgs e, string channel, ref TcpClient client, ref StreamWriter writer, ref StreamReader reader, ref StreamWriter fileWriter)
+        private void flushThread(string channel, ref TcpClient client, ref StreamWriter writer, ref StreamReader reader, ref StreamWriter fileWriter)
         {
-            
+            closeThreadResources(ref client, ref writer, ref reader, ref fileWriter);
+            Thread.Sleep(5);
+            Connect(channel, ref client, ref writer, ref reader, ref fileWriter);
+        }
+
+        private void onTick(Object source, ElapsedEventArgs e, string channel, ref TcpClient client, ref StreamWriter writer, ref StreamReader reader, ref StreamWriter fileWriter, ref int cycles)
+        {
+            cycles++;
+
+            if (cycles > RESET_CYCLES)
+            {
+                flushThread(channel, ref client, ref writer, ref reader, ref fileWriter);
+                cycles = 0;
+            }
+
             if (!client.Connected)
             {
                 Connect(channel, ref client, ref writer, ref reader, ref fileWriter);
@@ -99,17 +117,35 @@ namespace TrainingDataCollector
         void Connect(string channel, ref TcpClient client, ref StreamWriter writer, ref StreamReader reader, ref StreamWriter fileWriter)
         {
 
+            int attempts = 0;
             //Connect to twitch irc
-            fileWriter = File.AppendText(Path.Combine(path, channel + ".txt"));
-            client = new TcpClient("irc.chat.twitch.tv.", 6667);
-            writer = new StreamWriter(client.GetStream());
-            reader = new StreamReader(client.GetStream());
-            //Log in
-            writer.WriteLine("PASS " + password + Environment.NewLine
-                + "NICK " + username + Environment.NewLine
-                + "USER " + username + " 8 * :" + username);
-            writer.WriteLine("JOIN #" + channel);
-            writer.Flush();
+            do
+            {
+
+                try
+                {
+                    attempts++;
+                    fileWriter = File.AppendText(Path.Combine(path, channel + ".txt"));
+                    client = new TcpClient("irc.chat.twitch.tv.", 6667);
+                    writer = new StreamWriter(client.GetStream());
+                    reader = new StreamReader(client.GetStream());
+                    //Log in
+                    writer.WriteLine("PASS " + password + Environment.NewLine
+                        + "NICK " + username + Environment.NewLine
+                        + "USER " + username + " 8 * :" + username);
+                    writer.WriteLine("JOIN #" + channel);
+                    writer.Flush();
+
+                    break;
+                }
+                catch (Exception e)
+                {
+                    if (attempts > ALLOWABLE_FAILURES)
+                        throw new Exception("Network Error" + e.Message);
+                    else
+                        Thread.Sleep(5000);
+                }
+            } while (true);
 
         }
     }
