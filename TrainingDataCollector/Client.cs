@@ -79,6 +79,7 @@ namespace TrainingDataCollector
 
             if (!client.Connected)
             {
+                closeThreadResources(ref client, ref writer, ref reader, ref fileWriter);
                 Connect(channel, ref client, ref writer, ref reader, ref fileWriter);
             }
 
@@ -143,7 +144,7 @@ namespace TrainingDataCollector
                     if (attempts > ALLOWABLE_FAILURES)
                         throw new Exception("Network Error" + e.Message);
                     else
-                        Thread.Sleep(5000);
+                        Thread.Sleep(100);
                 }
             } while (true);
 

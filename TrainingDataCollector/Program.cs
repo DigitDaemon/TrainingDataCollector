@@ -14,7 +14,7 @@ namespace TrainingDataCollector
         {
             cl = new Client();
             thrEnd = false;
-            trigger = new System.Timers.Timer(1000);
+            trigger = new System.Timers.Timer(500);
             trigger.AutoReset = true;
             trigger.Enabled = true;
 
