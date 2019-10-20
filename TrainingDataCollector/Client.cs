@@ -12,7 +12,7 @@ namespace TrainingDataCollector
     public class Client
     {
         private const int ALLOWABLE_FAILURES = 10;
-        private const int RESET_CYCLES = 600;
+        private const int RESET_CYCLES = 599;
         // private TcpClient client;
         //private StreamWriter writer;
         //private StreamReader reader;
@@ -31,7 +31,7 @@ namespace TrainingDataCollector
         public void ClientThread(String channel, int time, ref bool threadEnd, ref System.Timers.Timer trigger)
         {
 
-            Console.WriteLine("thread start");
+            Console.WriteLine(channel + " Thread Start");
             TcpClient client = null;
             StreamWriter writer = null;
             StreamReader reader = null;
@@ -63,7 +63,7 @@ namespace TrainingDataCollector
         private void flushThread(string channel, ref TcpClient client, ref StreamWriter writer, ref StreamReader reader, ref StreamWriter fileWriter)
         {
             closeThreadResources(ref client, ref writer, ref reader, ref fileWriter);
-            Thread.Sleep(5);
+            Thread.Yield();
             Connect(channel, ref client, ref writer, ref reader, ref fileWriter);
         }
 
@@ -75,6 +75,12 @@ namespace TrainingDataCollector
             {
                 flushThread(channel, ref client, ref writer, ref reader, ref fileWriter);
                 cycles = 0;
+            }
+
+            if(cycles%30 == 0)
+            {
+                Thread.Yield();
+                Console.WriteLine(channel + " yield at 30");
             }
 
             if (!client.Connected)
@@ -99,7 +105,7 @@ namespace TrainingDataCollector
 
                     message = message.TrimStart(trimChar);
                     message = message.Remove(0, 1);
-                    Console.WriteLine(uname + ": " + message);
+                    //Console.WriteLine(uname + ": " + message);
                     fileWriter.WriteLine(message);
                 }
                 else
@@ -110,13 +116,14 @@ namespace TrainingDataCollector
             else
             {
                 Thread.Sleep(100);
+                Console.WriteLine(channel + " sleep at no messages");
             }
 
         }
 
         void Connect(string channel, ref TcpClient client, ref StreamWriter writer, ref StreamReader reader, ref StreamWriter fileWriter)
         {
-
+            Console.WriteLine(channel + " Connect Start");
             int attempts = 0;
             //Connect to twitch irc
             do
@@ -126,20 +133,28 @@ namespace TrainingDataCollector
                 {
                     attempts++;
                     fileWriter = File.AppendText(Path.Combine(path, channel + ".txt"));
+                    Console.WriteLine(channel + " filewriter");
                     client = new TcpClient("irc.chat.twitch.tv.", 6667);
+                    Console.WriteLine(channel + " TcpClient");
                     writer = new StreamWriter(client.GetStream());
+                    Console.WriteLine(channel + " StreamWriter");
                     reader = new StreamReader(client.GetStream());
+                    Console.WriteLine(channel + " StreamReader");
                     //Log in
                     writer.WriteLine("PASS " + password + Environment.NewLine
                         + "NICK " + username + Environment.NewLine
                         + "USER " + username + " 8 * :" + username);
+                    Console.WriteLine(channel + " Login");
                     writer.WriteLine("JOIN #" + channel);
+                    Console.WriteLine(channel + " Join");
                     writer.Flush();
+                    Console.WriteLine(channel + " flush");
 
                     break;
                 }
                 catch (Exception e)
                 {
+                    Console.WriteLine(e.Message);
                     if (attempts > ALLOWABLE_FAILURES)
                         throw new Exception("Network Error" + e.Message);
                     else
