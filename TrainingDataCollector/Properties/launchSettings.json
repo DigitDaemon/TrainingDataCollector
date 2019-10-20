@@ -2,7 +2,11 @@
   "profiles": {
     "TrainingDataCollector": {
       "commandName": "Project",
+<<<<<<< HEAD
       "commandLineArgs": "sefearion avulgarunicorn misskyliee limealicious perrythepig ghazzytv octavian0 shadedthefaded"
+=======
+      "commandLineArgs": "ziggydlive"
+>>>>>>> 8d9c4ce2cf47bc1847ed66680a6c1569dc0c20c0
     }
   }
 }
